@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Brain</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Brain - ChatGPT Export Organizer</h1>
+
+  <div class="card">
+    <h2>Upload ChatGPT Export ZIP</h2>
+    <form action="/uploads" method="post" enctype="multipart/form-data">
+      <label>Export Name <input type="text" name="name" required /></label>
+      <br /><br />
+      <input type="file" name="file" accept=".zip" required />
+      <br /><br />
+      <button type="submit">Upload and Process</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Previous Uploads</h2>
+    <ul>
+      {% for export in exports %}
+      <li>
+        <a href="/exports/{{ export.id }}">{{ export.name }}</a>
+        — {{ export.status }}
+        {% if export.error_message %}
+          ({{ export.error_message }})
+        {% endif %}
+      </li>
+      {% else %}
+      <li>No uploads yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</body>
+</html>

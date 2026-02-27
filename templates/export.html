@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>{{ export.name }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; }
+    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    .sidebar { border-right: 1px solid #ddd; padding: 1rem; background: #fafafa; }
+    .main { padding: 1rem; }
+    .tabs button { margin-right: .5rem; }
+    .tab { display: none; }
+    .tab.active { display: block; }
+    .conversation { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 1rem; padding: .75rem; }
+    .message { margin: .4rem 0; padding: .4rem; background: #f8f8f8; border-radius: 4px; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#e5e7eb; margin-right:4px; font-size:12px; }
+    .asset-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: .75rem; }
+    img { max-width: 100%; border-radius: 6px; }
+  </style>
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+    }
+  </script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h3>{{ export.name }}</h3>
+      <p>Status: <b>{{ export.status }}</b></p>
+      <p><a href="/">← All uploads</a></p>
+
+      <h4>Categories</h4>
+      <ul>
+        <li><a href="/exports/{{ export.id }}">All</a></li>
+        {% for category in categories %}
+          <li>
+            <a href="/exports/{{ export.id }}?category={{ category.slug }}">{{ category.name }}</a>
+            ({{ category.conversation_count }})
+            <details>
+              <summary>Rename</summary>
+              <form action="/exports/{{ export.id }}/categories/{{ category.id }}/rename" method="post">
+                <input name="name" value="{{ category.name }}" required />
+                <button type="submit">Save</button>
+              </form>
+            </details>
+          </li>
+        {% endfor %}
+      </ul>
+    </aside>
+
+    <main class="main">
+      <h1>Export Dashboard</h1>
+      <form method="get" action="/exports/{{ export.id }}">
+        {% if selected_category %}
+          <input type="hidden" name="category" value="{{ selected_category }}" />
+        {% endif %}
+        <input name="q" value="{{ query }}" placeholder="Search inside conversations" />
+        <button type="submit">Search</button>
+      </form>
+
+      <div class="tabs" style="margin:1rem 0;">
+        <button onclick="showTab('tab-conv')">Conversations</button>
+        <button onclick="showTab('tab-img')">Images</button>
+        <button onclick="showTab('tab-audio')">Audio</button>
+        <button onclick="showTab('tab-files')">Files</button>
+      </div>
+
+      <section id="tab-conv" class="tab active">
+        {% for conversation in conversations %}
+          <div class="conversation">
+            <h3>{{ conversation.title }}</h3>
+            <div>
+              {% for cat in cat_by_conv.get(conversation.id, []) %}
+                <span class="badge">{{ cat.name }}</span>
+              {% endfor %}
+            </div>
+            <small>{{ conversation.conversation_date or conversation.created_at }}</small>
+
+            <details>
+              <summary>Move to category</summary>
+              <form method="post" action="/exports/{{ export.id }}/conversations/{{ conversation.id }}/move">
+                <label>Existing category</label>
+                <select name="category_id">
+                  <option value="">Select...</option>
+                  {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                  {% endfor %}
+                </select>
+                <br />
+                <label>or new category</label>
+                <input name="new_category" placeholder="New category name" />
+                <button type="submit">Move</button>
+              </form>
+            </details>
+
+            {% for message in messages_by_conv.get(conversation.id, []) %}
+              <div class="message">
+                <b>{{ message.role }}</b>: {{ message.content_text or '' }}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p>No conversations match your filter.</p>
+        {% endfor %}
+      </section>
+
+      <section id="tab-img" class="tab">
+        <div class="asset-grid">
+          {% for asset in images %}
+            <div>
+              <img src="/storage/{{ asset.storage_path }}" alt="{{ asset.original_name }}" />
+              <div>{{ asset.original_name }}</div>
+            </div>
+          {% else %}
+            <p>No images found.</p>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section id="tab-audio" class="tab">
+        {% for asset in audios %}
+          <div class="conversation">
+            <div>{{ asset.original_name }}</div>
+            <audio controls src="/storage/{{ asset.storage_path }}"></audio>
+          </div>
+        {% else %}
+          <p>No audio files found.</p>
+        {% endfor %}
+      </section>
+
+      <section id="tab-files" class="tab">
+        <table border="1" cellpadding="8" cellspacing="0">
+          <tr><th>Name</th><th>Size (bytes)</th><th>Download</th></tr>
+          {% for asset in files %}
+          <tr>
+            <td>{{ asset.original_name }}</td>
+            <td>{{ asset.byte_size }}</td>
+            <td><a href="/storage/{{ asset.storage_path }}" download>Download</a></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3">No attachments found.</td></tr>
+          {% endfor %}
+        </table>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
